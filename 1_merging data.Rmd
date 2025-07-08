@@ -1,0 +1,47 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+library(readr)
+
+setwd("D:/NCF")
+ebd <- read_tsv("data/ebd/all-hornbills-ap.txt")
+hw <- readxl::read_xlsx("data/HW/Hornbill Watch_31 March 2025.xlsx")
+gbif <- read_tsv("data/gbif/all-hornbills-gbif.txt")
+
+```
+
+## Columns to be selected:
+
+### eBird
+
+LONGITUDE
+LATITUDE
+
+OBSERVATION DATE
+
+TIME OBSERVATION STARTED
+
+PROTOCOL TYPE
+
+LOCALITY
+
+COUNTY
+
+STATE
+
+OBSERVATION COUNT
+
+OBSERVER ID
+
+EFFORT DISTANCE
+
+NUMBER OF OBSERVERS
+Species common name
+Species scientific name
+GROUP IDENTIFIER
+
+DURATION
