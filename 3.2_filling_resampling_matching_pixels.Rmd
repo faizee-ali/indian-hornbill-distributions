@@ -1,0 +1,148 @@
+---
+title: "resample, crop, and fill"
+output: html_notebook
+---
+
+Test 1 with just one file - approxNA is working for our jugad
+
+```{r}
+setwd("D:/NCF/data/variables/cropped rasters/")
+library(terra)
+library(raster)
+
+# -------------------------------
+# Set paths
+# -------------------------------
+
+# Reference raster (BIO01)
+ref_path <- "temp_bio_1/AP_CHELSA_bio1_1981-2010_V.2.1.tif"
+
+# Input folder with rasters to resample
+input_dir <- "raster_raw"
+
+#Output folder
+output_dir <- "resampled_filled"
+
+# -------------------------------
+# Load reference raster
+# -------------------------------
+
+ref_raster <- rast(ref_path)
+
+# -------------------------------
+# List input rasters
+# -------------------------------
+
+raster_files <- list.files(input_dir, pattern = "\\.tif$", full.names = TRUE)
+r <- rast("raster_raw/NVDI_MAY_AP_2015.tif")
+r_resampled <- resample(r, ref_raster, method = "bilinear")
+writeRaster(r_resampled, "r_resampled.tif", overwrite = TRUE)
+
+#Step 2: Convert to raster object for approxNA()
+r_raster <- raster(r_resampled)
+
+#Step 3: Fill NA using nearest neighbor
+ref_raster_r <- raster(ref_raster)  # convert SpatRaster to RasterLayer
+
+s <- stack(ref_raster_r,r_raster)
+r_filled <- approxNA(s, method = "constant")
+
+#Step 4: Mask to reference extent
+r_masked <- mask(r_filled, raster(ref_raster))
+
+  # Step 5: Save
+writeRaster(r_masked$NVDI_MAY_AP_2015, "r_masked.tif", overwrite = TRUE)
+
+```
+
+Automated
+
+```{r}
+library(terra)
+library(raster)
+
+# -------------------------------
+# Set paths
+# -------------------------------
+
+ref_path <- "temp_bio_1/AP_CHELSA_bio1_1981-2010_V.2.1.tif"  # Reference raster
+input_dir <- "raster_raw"         # Folder with input rasters
+output_dir <- "resampled_filled"  # Output folder
+
+# -------------------------------
+# Load reference raster
+# -------------------------------
+
+ref_raster <- rast(ref_path)
+ref_raster_r <- raster(ref_raster)  # Convert to raster format for approxNA()
+
+# -------------------------------
+# List input raster files
+# -------------------------------
+
+raster_files <- list.files(input_dir, pattern = "\\.tif$", full.names = TRUE)
+
+# -------------------------------
+# Process each raster file
+# -------------------------------
+
+for (f in raster_files) {
+  cat("🔄 Processing:", f, "\n")
+  
+  # Load and resample
+  r <- rast(f)
+  r_resampled <- resample(r, ref_raster, method = "near")
+
+  # Convert to raster object for approxNA
+  r_raster <- raster(r_resampled)
+  
+  # Stack with reference layer
+  s <- stack(ref_raster_r, r_raster)
+
+  # Fill NA using approxNA (nearest neighbor style)
+  r_filled <- approxNA(s, method = "constant")
+
+  # Mask to reference extent
+  r_masked <- mask(r_filled, ref_raster_r)
+  
+  # Extract layer name from filename
+  out_name <- tools::file_path_sans_ext(basename(f))
+  out_path <- file.path(output_dir, paste0(out_name, "_resampled_filled.tif"))
+
+  # Save output
+  writeRaster(r_masked[[2]], filename = out_path, overwrite = TRUE)
+  
+  cat("✅ Saved:", out_path, "\n")
+}
+```
+
+Now in a batch process
+
+``` r
+for (infile in raster_files) {
+  if (basename(infile) == basename(ref_path)) next  # skip reference
+
+  cat("🔄 Processing:", basename(infile), "\n")
+
+  # Step 1: Load and resample with terra
+  r <- rast(infile)
+  r_resampled <- resample(r, ref_raster, method = "bilinear")
+
+  # Step 2: Convert to raster object for approxNA()
+  r_raster <- raster(r_resampled)
+
+  # Step 3: Fill NA using nearest neighbor
+  r_filled <- approxNA(r_raster, method = "ngb")
+
+  # Step 4: Mask to reference extent
+  r_masked <- mask(r_filled, raster(ref_raster))
+
+  # Step 5: Save
+  outname <- file.path(output_dir, basename(infile))
+  writeRaster(r_masked, outname, overwrite = TRUE)
+
+  cat("✅ Saved:", outname, "\n\n")
+}
+
+cat("🎉 All rasters resampled, filled with nearest neighbor, and saved.\n")
+```
